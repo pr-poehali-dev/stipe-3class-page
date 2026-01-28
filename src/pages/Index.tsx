@@ -12,7 +12,6 @@ import { useToast } from '@/hooks/use-toast';
 interface User {
   id: string;
   name: string;
-  email: string;
   avatar: string;
 }
 
@@ -41,10 +40,9 @@ const DEMO_CONTACTS: Contact[] = [
 export default function Index() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [loginEmail, setLoginEmail] = useState('');
+  const [loginNickname, setLoginNickname] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [registerName, setRegisterName] = useState('');
-  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerNickname, setRegisterNickname] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -72,7 +70,7 @@ export default function Index() {
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!registerName || !registerEmail || !registerPassword) {
+    if (!registerNickname || !registerPassword) {
       toast({
         title: 'Ошибка',
         description: 'Заполните все поля',
@@ -82,12 +80,12 @@ export default function Index() {
     }
 
     const users = JSON.parse(localStorage.getItem('stype_users') || '[]');
-    const exists = users.find((u: User) => u.email === registerEmail);
+    const exists = users.find((u: User) => u.name === registerNickname);
     
     if (exists) {
       toast({
         title: 'Ошибка',
-        description: 'Пользователь с таким email уже существует',
+        description: 'Пользователь с таким ником уже существует',
         variant: 'destructive',
       });
       return;
@@ -95,8 +93,7 @@ export default function Index() {
 
     const newUser: User = {
       id: Date.now().toString(),
-      name: registerName,
-      email: registerEmail,
+      name: registerNickname,
       avatar: '🎓',
     };
 
@@ -117,12 +114,12 @@ export default function Index() {
     e.preventDefault();
     
     const users = JSON.parse(localStorage.getItem('stype_users') || '[]');
-    const user = users.find((u: any) => u.email === loginEmail && u.password === loginPassword);
+    const user = users.find((u: any) => u.name === loginNickname && u.password === loginPassword);
     
     if (!user) {
       toast({
         title: 'Ошибка',
-        description: 'Неверный email или пароль',
+        description: 'Неверный ник или пароль',
         variant: 'destructive',
       });
       return;
@@ -301,13 +298,13 @@ export default function Index() {
               <TabsContent value="login">
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="nickname">Ник</Label>
                     <Input
-                      id="email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={loginEmail}
-                      onChange={(e) => setLoginEmail(e.target.value)}
+                      id="nickname"
+                      type="text"
+                      placeholder="Ваш ник"
+                      value={loginNickname}
+                      onChange={(e) => setLoginNickname(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
@@ -329,22 +326,13 @@ export default function Index() {
               <TabsContent value="register">
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Имя</Label>
+                    <Label htmlFor="reg-nickname">Ник</Label>
                     <Input
-                      id="name"
-                      placeholder="Ваше имя"
-                      value={registerName}
-                      onChange={(e) => setRegisterName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="reg-email">Email</Label>
-                    <Input
-                      id="reg-email"
-                      type="email"
-                      placeholder="your@email.com"
-                      value={registerEmail}
-                      onChange={(e) => setRegisterEmail(e.target.value)}
+                      id="reg-nickname"
+                      type="text"
+                      placeholder="Придумайте ник"
+                      value={registerNickname}
+                      onChange={(e) => setRegisterNickname(e.target.value)}
                     />
                   </div>
                   <div className="space-y-2">
