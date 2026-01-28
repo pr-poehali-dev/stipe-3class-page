@@ -1,321 +1,560 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import Icon from '@/components/ui/icon';
+import { useToast } from '@/hooks/use-toast';
 
-interface Quiz {
-  question: string;
-  options: string[];
-  correct: number;
-}
-
-interface Subject {
+interface User {
   id: string;
-  title: string;
-  icon: string;
-  description: string;
-  color: string;
-  quizzes: Quiz[];
+  name: string;
+  email: string;
+  avatar: string;
 }
 
-const subjects: Subject[] = [
-  {
-    id: 'math',
-    title: '📐 Математика',
-    icon: 'Calculator',
-    description: 'Учим умножение и деление, решаем задачи, играем с числами!',
-    color: 'from-red-400 to-pink-500',
-    quizzes: [
-      { question: 'Сколько будет 7 × 8?', options: ['54', '56', '64', '48'], correct: 1 },
-      { question: 'Реши: 48 ÷ 6 = ?', options: ['6', '7', '8', '9'], correct: 2 },
-      { question: 'У Маши 15 яблок, она съела 3. Сколько осталось?', options: ['12', '13', '11', '14'], correct: 0 }
-    ]
-  },
-  {
-    id: 'russian',
-    title: '📝 Русский язык',
-    icon: 'BookOpen',
-    description: 'Правописание безударных гласных, части речи, интересные диктанты',
-    color: 'from-blue-400 to-cyan-500',
-    quizzes: [
-      { question: 'Какая буква пропущена: в_сна?', options: ['и', 'е', 'о', 'а'], correct: 3 },
-      { question: 'Найди существительное:', options: ['бежать', 'синий', 'дом', 'быстро'], correct: 2 },
-      { question: 'Сколько слогов в слове "компьютер"?', options: ['2', '3', '4', '5'], correct: 1 }
-    ]
-  },
-  {
-    id: 'reading',
-    title: '📚 Чтение',
-    icon: 'Book',
-    description: 'Сказки, рассказы, стихи — читаем и обсуждаем вместе!',
-    color: 'from-green-400 to-emerald-500',
-    quizzes: [
-      { question: 'Кто автор сказки "Конёк-Горбунок"?', options: ['Пушкин', 'Ершов', 'Толстой', 'Чуковский'], correct: 1 },
-      { question: 'Как зовут главного героя "Незнайки"?', options: ['Незнайка', 'Знайка', 'Пончик', 'Винтик'], correct: 0 },
-      { question: 'Что такое рифма?', options: ['Начало строки', 'Созвучие концов строк', 'Название книги', 'Автор стиха'], correct: 1 }
-    ]
-  },
-  {
-    id: 'world',
-    title: '🌍 Окружающий мир',
-    icon: 'Globe',
-    description: 'Природа, животные, наша планета — узнаём новое!',
-    color: 'from-yellow-400 to-orange-500',
-    quizzes: [
-      { question: 'Сколько планет в Солнечной системе?', options: ['7', '8', '9', '10'], correct: 1 },
-      { question: 'Какое животное — хищник?', options: ['Корова', 'Волк', 'Заяц', 'Олень'], correct: 1 },
-      { question: 'Что растения выделяют на свету?', options: ['Углекислый газ', 'Кислород', 'Азот', 'Водород'], correct: 1 }
-    ]
-  },
-  {
-    id: 'craft',
-    title: '✂️ Труд',
-    icon: 'Scissors',
-    description: 'Поделки из бумаги, аппликации, рукоделие — творим сами!',
-    color: 'from-purple-400 to-pink-500',
-    quizzes: [
-      { question: 'Что нужно для аппликации?', options: ['Клей и бумага', 'Молоток', 'Пила', 'Компьютер'], correct: 0 },
-      { question: 'Как называется японское искусство складывания бумаги?', options: ['Икебана', 'Оригами', 'Каратэ', 'Сумо'], correct: 1 },
-      { question: 'Какой материал лучше для поделки из природных материалов?', options: ['Пластик', 'Шишки и листья', 'Металл', 'Стекло'], correct: 1 }
-    ]
-  },
-  {
-    id: 'pe',
-    title: '⚽ Физкультура',
-    icon: 'Activity',
-    description: 'Зарядка, игры, спорт — будь здоровым и сильным!',
-    color: 'from-red-500 to-orange-600',
-    quizzes: [
-      { question: 'Сколько игроков в футбольной команде на поле?', options: ['9', '10', '11', '12'], correct: 2 },
-      { question: 'Какое упражнение развивает гибкость?', options: ['Бег', 'Растяжка', 'Прыжки', 'Метание'], correct: 1 },
-      { question: 'Что нужно делать перед тренировкой?', options: ['Поесть много', 'Разминку', 'Лечь спать', 'Ничего'], correct: 1 }
-    ]
-  }
+interface Message {
+  id: string;
+  senderId: string;
+  senderName: string;
+  text: string;
+  timestamp: Date;
+}
+
+interface Contact {
+  id: string;
+  name: string;
+  avatar: string;
+  online: boolean;
+}
+
+const DEMO_CONTACTS: Contact[] = [
+  { id: '2', name: 'Маша Иванова', avatar: '👧', online: true },
+  { id: '3', name: 'Петя Сидоров', avatar: '👦', online: true },
+  { id: '4', name: 'Аня Петрова', avatar: '👩', online: false },
+  { id: '5', name: 'Ваня Смирнов', avatar: '👨', online: true },
 ];
 
 export default function Index() {
-  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  const [selectedAnswer, setSelectedAnswer] = useState<string>('');
-  const [showResult, setShowResult] = useState(false);
-  const [score, setScore] = useState(0);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerName, setRegisterName] = useState('');
+  const [registerEmail, setRegisterEmail] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isInCall, setIsInCall] = useState(false);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+  
+  const localVideoRef = useRef<HTMLVideoElement>(null);
+  const remoteVideoRef = useRef<HTMLVideoElement>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  
+  const { toast } = useToast();
 
-  const handleSubjectClick = (subject: Subject) => {
-    setSelectedSubject(subject);
-    setCurrentQuizIndex(0);
-    setSelectedAnswer('');
-    setShowResult(false);
-    setScore(0);
-  };
+  useEffect(() => {
+    const stored = localStorage.getItem('stype_user');
+    if (stored) {
+      const user = JSON.parse(stored);
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+    }
+  }, []);
 
-  const handleAnswerSubmit = () => {
-    if (!selectedSubject || selectedAnswer === '') return;
-
-    const currentQuiz = selectedSubject.quizzes[currentQuizIndex];
-    const isCorrect = parseInt(selectedAnswer) === currentQuiz.correct;
-
-    if (isCorrect) {
-      setScore(score + 1);
+  const handleRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!registerName || !registerEmail || !registerPassword) {
+      toast({
+        title: 'Ошибка',
+        description: 'Заполните все поля',
+        variant: 'destructive',
+      });
+      return;
     }
 
-    setShowResult(true);
+    const users = JSON.parse(localStorage.getItem('stype_users') || '[]');
+    const exists = users.find((u: User) => u.email === registerEmail);
+    
+    if (exists) {
+      toast({
+        title: 'Ошибка',
+        description: 'Пользователь с таким email уже существует',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const newUser: User = {
+      id: Date.now().toString(),
+      name: registerName,
+      email: registerEmail,
+      avatar: '🎓',
+    };
+
+    users.push({ ...newUser, password: registerPassword });
+    localStorage.setItem('stype_users', JSON.stringify(users));
+    localStorage.setItem('stype_user', JSON.stringify(newUser));
+    
+    setCurrentUser(newUser);
+    setIsAuthenticated(true);
+    
+    toast({
+      title: 'Успешно!',
+      description: 'Добро пожаловать на Stype!',
+    });
   };
 
-  const handleNextQuestion = () => {
-    if (!selectedSubject) return;
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const users = JSON.parse(localStorage.getItem('stype_users') || '[]');
+    const user = users.find((u: any) => u.email === loginEmail && u.password === loginPassword);
+    
+    if (!user) {
+      toast({
+        title: 'Ошибка',
+        description: 'Неверный email или пароль',
+        variant: 'destructive',
+      });
+      return;
+    }
 
-    if (currentQuizIndex < selectedSubject.quizzes.length - 1) {
-      setCurrentQuizIndex(currentQuizIndex + 1);
-      setSelectedAnswer('');
-      setShowResult(false);
+    const { password, ...userData } = user;
+    localStorage.setItem('stype_user', JSON.stringify(userData));
+    
+    setCurrentUser(userData);
+    setIsAuthenticated(true);
+    
+    toast({
+      title: 'Вход выполнен!',
+      description: `Привет, ${userData.name}!`,
+    });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('stype_user');
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+    setSelectedContact(null);
+    setMessages([]);
+  };
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedContact || !currentUser) return;
+
+    const message: Message = {
+      id: Date.now().toString(),
+      senderId: currentUser.id,
+      senderName: currentUser.name,
+      text: newMessage,
+      timestamp: new Date(),
+    };
+
+    setMessages([...messages, message]);
+    setNewMessage('');
+
+    setTimeout(() => {
+      const reply: Message = {
+        id: (Date.now() + 1).toString(),
+        senderId: selectedContact.id,
+        senderName: selectedContact.name,
+        text: 'Привет! Как дела? 😊',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, reply]);
+    }, 1500);
+  };
+
+  const startVideoCall = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: true, 
+        audio: true 
+      });
+      
+      localStreamRef.current = stream;
+      
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = stream;
+      }
+      
+      setIsInCall(true);
+      
+      toast({
+        title: 'Звонок начат',
+        description: 'Вы подключились к видеозвонку',
+      });
+
+      setTimeout(() => {
+        if (remoteVideoRef.current && localStreamRef.current) {
+          remoteVideoRef.current.srcObject = localStreamRef.current;
+        }
+      }, 2000);
+      
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось получить доступ к камере/микрофону',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const stopVideoCall = () => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(track => track.stop());
+      localStreamRef.current = null;
+    }
+    
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+    }
+    
+    setIsInCall(false);
+    setIsScreenSharing(false);
+    
+    toast({
+      title: 'Звонок завершён',
+      description: 'Вы отключились от видеозвонка',
+    });
+  };
+
+  const toggleScreenShare = async () => {
+    if (isScreenSharing) {
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(track => track.stop());
+        screenStreamRef.current = null;
+      }
+      
+      if (localStreamRef.current && localVideoRef.current) {
+        localVideoRef.current.srcObject = localStreamRef.current;
+      }
+      
+      setIsScreenSharing(false);
+      
+      toast({
+        title: 'Демонстрация завершена',
+        description: 'Вы прекратили показ экрана',
+      });
+      
     } else {
-      setSelectedSubject(null);
+      try {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false,
+        });
+        
+        screenStreamRef.current = screenStream;
+        
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = screenStream;
+        }
+        
+        setIsScreenSharing(true);
+        
+        toast({
+          title: 'Демонстрация экрана',
+          description: 'Вы начали показ экрана',
+        });
+
+        screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+          toggleScreenShare();
+        });
+        
+      } catch (error) {
+        toast({
+          title: 'Ошибка',
+          description: 'Не удалось получить доступ к экрану',
+          variant: 'destructive',
+        });
+      }
     }
   };
 
-  const currentQuiz = selectedSubject?.quizzes[currentQuizIndex];
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md shadow-2xl animate-scale-in">
+          <CardHeader className="text-center">
+            <CardTitle className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+              🚀 Stype
+            </CardTitle>
+            <CardDescription>Образовательная платформа для 3 класса</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue="login">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="login">Вход</TabsTrigger>
+                <TabsTrigger value="register">Регистрация</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="login">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={loginEmail}
+                      onChange={(e) => setLoginEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Пароль</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={loginPassword}
+                      onChange={(e) => setLoginPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Войти
+                  </Button>
+                </form>
+              </TabsContent>
+              
+              <TabsContent value="register">
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Имя</Label>
+                    <Input
+                      id="name"
+                      placeholder="Ваше имя"
+                      value={registerName}
+                      onChange={(e) => setRegisterName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-email">Email</Label>
+                    <Input
+                      id="reg-email"
+                      type="email"
+                      placeholder="your@email.com"
+                      value={registerEmail}
+                      onChange={(e) => setRegisterEmail(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-password">Пароль</Label>
+                    <Input
+                      id="reg-password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value)}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full">
+                    Зарегистрироваться
+                  </Button>
+                </form>
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-200 via-blue-100 to-purple-200 relative overflow-hidden">
-      <div 
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: `repeating-linear-gradient(0deg, #1E90FF 0px, #1E90FF 1px, transparent 1px, transparent 20px),
-                           repeating-linear-gradient(90deg, #1E90FF 0px, #1E90FF 1px, transparent 1px, transparent 20px)`,
-        }}
-      />
-      
-      <div className="container mx-auto px-4 py-8 relative z-10">
-        <header className="text-center mb-12 space-y-4">
-          <h1 
-            className="text-6xl font-bold text-red-600 animate-shake"
-            style={{ 
-              textShadow: '3px 3px 0 #FFD700, 6px 6px 0 #FF4444',
-              letterSpacing: '2px'
-            }}
-          >
-            🚀 Stype — 3 класс 🚀
-          </h1>
-          <p 
-            className="text-2xl italic text-blue-900 font-semibold animate-blink"
-            style={{ textShadow: '2px 2px 4px rgba(255, 215, 0, 0.5)' }}
-          >
-            Учимся с радостью перед весенними каникулами 2026!
-          </p>
-        </header>
-
-        <nav className="mb-12">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-400 rounded-3xl p-6 shadow-2xl border-4 border-blue-800">
-            <div className="flex flex-wrap justify-center gap-4">
-              {subjects.map((subject) => (
-                <Button
-                  key={subject.id}
-                  onClick={() => handleSubjectClick(subject)}
-                  className="bg-white/20 hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg border-2 border-white/50"
-                  style={{ backdropFilter: 'blur(10px)' }}
-                >
-                  {subject.title}
-                </Button>
-              ))}
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-sky-100 to-purple-100">
+      <header className="bg-white shadow-md border-b-4 border-blue-500">
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+              🚀 Stype
+            </h1>
           </div>
-        </nav>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Avatar>
+                <AvatarFallback className="text-2xl">{currentUser?.avatar}</AvatarFallback>
+              </Avatar>
+              <span className="font-semibold">{currentUser?.name}</span>
+            </div>
+            <Button variant="outline" onClick={handleLogout}>
+              <Icon name="LogOut" size={18} className="mr-2" />
+              Выход
+            </Button>
+          </div>
+        </div>
+      </header>
 
-        <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {subjects.map((subject, index) => (
-            <Card
-              key={subject.id}
-              className="animate-bounce-in cursor-pointer hover:scale-105 transition-all duration-300 hover:shadow-2xl border-4 border-blue-300 bg-gradient-to-br from-white to-blue-50"
-              onClick={() => handleSubjectClick(subject)}
-              style={{
-                animationDelay: `${index * 0.1}s`,
-                boxShadow: 'inset 0 -4px 0 rgba(30, 144, 255, 0.3), 0 8px 16px rgba(0, 0, 0, 0.2)'
-              }}
-            >
-              <div className={`h-2 bg-gradient-to-r ${subject.color} rounded-t-lg`} />
-              <CardHeader>
-                <CardTitle className="text-2xl text-red-600 border-b-2 border-dashed border-blue-400 pb-2 flex items-center gap-2">
-                  <Icon name={subject.icon} size={28} />
-                  {subject.title}
-                </CardTitle>
-                <CardDescription className="text-gray-700 text-base mt-2">
-                  {subject.description}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button 
-                  className={`w-full bg-gradient-to-r ${subject.color} text-white font-bold py-3 rounded-xl shadow-lg hover:brightness-90 transition-all`}
-                >
-                  🎯 Пройти тест!
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </main>
+      <main className="container mx-auto p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Icon name="Users" size={20} />
+                Контакты
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[600px]">
+                <div className="space-y-2">
+                  {DEMO_CONTACTS.map((contact) => (
+                    <div
+                      key={contact.id}
+                      onClick={() => setSelectedContact(contact)}
+                      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all hover:bg-blue-50 ${
+                        selectedContact?.id === contact.id ? 'bg-blue-100' : ''
+                      }`}
+                    >
+                      <Avatar>
+                        <AvatarFallback className="text-2xl">{contact.avatar}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="font-semibold">{contact.name}</div>
+                        <div className="text-sm text-gray-500 flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${contact.online ? 'bg-green-500' : 'bg-gray-300'}`} />
+                          {contact.online ? 'В сети' : 'Не в сети'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
 
-        <Dialog open={!!selectedSubject} onOpenChange={() => setSelectedSubject(null)}>
-          <DialogContent className="max-w-2xl border-4 border-purple-400 bg-gradient-to-br from-yellow-50 to-pink-50">
-            <DialogHeader>
-              <DialogTitle className="text-3xl text-center text-purple-700" style={{ fontFamily: 'Comic Neue, Comic Sans MS, cursive' }}>
-                {selectedSubject?.title}
-              </DialogTitle>
-              <DialogDescription className="text-center text-lg text-gray-700">
-                Вопрос {currentQuizIndex + 1} из {selectedSubject?.quizzes.length} | 
-                <span className="ml-2 font-bold text-green-600">Баллов: {score}</span>
-              </DialogDescription>
-            </DialogHeader>
-
-            {currentQuiz && (
-              <div className="space-y-6">
-                <div className="bg-gradient-to-r from-blue-100 to-purple-100 p-6 rounded-xl border-4 border-blue-300">
-                  <h3 className="text-2xl font-bold text-blue-900 mb-4">
-                    {currentQuiz.question}
-                  </h3>
-
-                  <RadioGroup value={selectedAnswer} onValueChange={setSelectedAnswer} disabled={showResult}>
-                    <div className="space-y-3">
-                      {currentQuiz.options.map((option, index) => (
-                        <div 
-                          key={index}
-                          className={`flex items-center space-x-3 p-4 rounded-lg border-3 transition-all ${
-                            showResult
-                              ? index === currentQuiz.correct
-                                ? 'bg-green-200 border-green-500'
-                                : parseInt(selectedAnswer) === index
-                                ? 'bg-red-200 border-red-500'
-                                : 'bg-white border-gray-300'
-                              : 'bg-white border-blue-300 hover:bg-blue-50'
-                          }`}
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {selectedContact ? (
+                    <>
+                      <Avatar>
+                        <AvatarFallback className="text-2xl">{selectedContact.avatar}</AvatarFallback>
+                      </Avatar>
+                      {selectedContact.name}
+                    </>
+                  ) : (
+                    <>
+                      <Icon name="MessageSquare" size={20} />
+                      Выберите контакт
+                    </>
+                  )}
+                </div>
+                {selectedContact && !isInCall && (
+                  <Button onClick={startVideoCall} variant="outline" size="sm">
+                    <Icon name="Video" size={18} className="mr-2" />
+                    Звонок
+                  </Button>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!selectedContact ? (
+                <div className="h-[600px] flex items-center justify-center text-gray-400">
+                  <div className="text-center">
+                    <Icon name="MessageCircle" size={64} className="mx-auto mb-4 opacity-30" />
+                    <p>Выберите контакт для начала общения</p>
+                  </div>
+                </div>
+              ) : isInCall ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="relative">
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="w-full h-64 bg-gray-900 rounded-lg object-cover"
+                      />
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
+                        Вы {isScreenSharing && '(Экран)'}
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <video
+                        ref={remoteVideoRef}
+                        autoPlay
+                        playsInline
+                        className="w-full h-64 bg-gray-900 rounded-lg object-cover"
+                      />
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white px-2 py-1 rounded text-sm">
+                        {selectedContact.name}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-center gap-4">
+                    <Button
+                      onClick={toggleScreenShare}
+                      variant={isScreenSharing ? 'default' : 'outline'}
+                      className="flex-1 max-w-xs"
+                    >
+                      <Icon name="Monitor" size={18} className="mr-2" />
+                      {isScreenSharing ? 'Остановить показ' : 'Показать экран'}
+                    </Button>
+                    <Button
+                      onClick={stopVideoCall}
+                      variant="destructive"
+                      className="flex-1 max-w-xs"
+                    >
+                      <Icon name="PhoneOff" size={18} className="mr-2" />
+                      Завершить звонок
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <ScrollArea className="h-[500px] mb-4">
+                    <div className="space-y-4">
+                      {messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`flex ${msg.senderId === currentUser?.id ? 'justify-end' : 'justify-start'}`}
                         >
-                          <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                          <Label htmlFor={`option-${index}`} className="text-lg cursor-pointer flex-1">
-                            {option}
-                          </Label>
-                          {showResult && index === currentQuiz.correct && (
-                            <span className="text-2xl">✅</span>
-                          )}
-                          {showResult && parseInt(selectedAnswer) === index && index !== currentQuiz.correct && (
-                            <span className="text-2xl">❌</span>
-                          )}
+                          <div
+                            className={`max-w-xs px-4 py-2 rounded-2xl ${
+                              msg.senderId === currentUser?.id
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-200 text-gray-900'
+                            }`}
+                          >
+                            <div className="font-semibold text-sm mb-1">{msg.senderName}</div>
+                            <div>{msg.text}</div>
+                            <div className="text-xs opacity-70 mt-1">
+                              {msg.timestamp.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
-                  </RadioGroup>
-                </div>
+                  </ScrollArea>
 
-                <div className="flex gap-4">
-                  {!showResult ? (
-                    <Button
-                      onClick={handleAnswerSubmit}
-                      disabled={!selectedAnswer}
-                      className="flex-1 bg-gradient-to-r from-green-400 to-blue-500 text-white font-bold py-4 text-lg rounded-xl shadow-lg hover:scale-105 transition-all"
-                    >
-                      ✔️ Проверить ответ
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Напишите сообщение..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    />
+                    <Button onClick={handleSendMessage}>
+                      <Icon name="Send" size={18} />
                     </Button>
-                  ) : (
-                    <Button
-                      onClick={handleNextQuestion}
-                      className="flex-1 bg-gradient-to-r from-orange-400 to-red-500 text-white font-bold py-4 text-lg rounded-xl shadow-lg hover:scale-105 transition-all"
-                    >
-                      {currentQuizIndex < (selectedSubject?.quizzes.length ?? 0) - 1 
-                        ? '➡️ Следующий вопрос' 
-                        : `🎉 Завершить (${score}/${selectedSubject?.quizzes.length})`}
-                    </Button>
-                  )}
-                </div>
-
-                {showResult && (
-                  <div className={`text-center text-2xl font-bold p-4 rounded-xl ${
-                    parseInt(selectedAnswer) === currentQuiz.correct
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
-                  }`}>
-                    {parseInt(selectedAnswer) === currentQuiz.correct
-                      ? '🎉 Правильно! Молодец!'
-                      : '😔 Неправильно! Попробуй ещё раз в следующий раз!'}
                   </div>
-                )}
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        <footer className="mt-16 text-center">
-          <p className="text-white text-sm opacity-70 animate-blink" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>
-            © 2026 Stype Educational Platform | Сделано с ❤️ для третьеклассников
-          </p>
-        </footer>
-      </div>
-
-      <div 
-        className="fixed bottom-8 right-8 bg-red-500 hover:bg-red-600 text-white p-4 rounded-full shadow-2xl cursor-pointer hover:rotate-12 hover:scale-110 transition-all duration-300 border-4 border-yellow-400"
-        onClick={() => document.documentElement.requestFullscreen()}
-      >
-        <Icon name="Maximize" size={32} />
-      </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </main>
     </div>
   );
 }
