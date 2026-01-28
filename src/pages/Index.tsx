@@ -30,12 +30,7 @@ interface Contact {
   online: boolean;
 }
 
-const DEMO_CONTACTS: Contact[] = [
-  { id: '2', name: 'Маша Иванова', avatar: '👧', online: true },
-  { id: '3', name: 'Петя Сидоров', avatar: '👦', online: true },
-  { id: '4', name: 'Аня Петрова', avatar: '👩', online: false },
-  { id: '5', name: 'Ваня Смирнов', avatar: '👨', online: true },
-];
+
 
 export default function Index() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -47,6 +42,11 @@ export default function Index() {
   
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [isInCall, setIsInCall] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
@@ -64,8 +64,65 @@ export default function Index() {
       const user = JSON.parse(stored);
       setCurrentUser(user);
       setIsAuthenticated(true);
+      loadContacts();
     }
   }, []);
+
+  const loadContacts = () => {
+    const users = JSON.parse(localStorage.getItem('stype_users') || '[]');
+    const currentUserId = JSON.parse(localStorage.getItem('stype_user') || '{}').id;
+    const contactsList: Contact[] = users
+      .filter((u: any) => u.id !== currentUserId)
+      .map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        avatar: u.avatar || '👤',
+        online: Math.random() > 0.3,
+      }));
+    setContacts(contactsList);
+  };
+
+  const handleSearch = () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    const users = JSON.parse(localStorage.getItem('stype_users') || '[]');
+    const currentUserId = currentUser?.id;
+    const results = users
+      .filter((u: any) => 
+        u.id !== currentUserId && 
+        u.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+      .map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        avatar: u.avatar || '👤',
+      }));
+    setSearchResults(results);
+  };
+
+  const addToContacts = (user: User) => {
+    const newContact: Contact = {
+      id: user.id,
+      name: user.name,
+      avatar: user.avatar,
+      online: true,
+    };
+    
+    if (!contacts.find(c => c.id === user.id)) {
+      setContacts([...contacts, newContact]);
+      toast({
+        title: 'Контакт добавлен',
+        description: `${user.name} добавлен в ваши контакты`,
+      });
+    }
+    
+    setSearchQuery('');
+    setSearchResults([]);
+    setSelectedContact(newContact);
+  };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,16 +216,7 @@ export default function Index() {
     setMessages([...messages, message]);
     setNewMessage('');
 
-    setTimeout(() => {
-      const reply: Message = {
-        id: (Date.now() + 1).toString(),
-        senderId: selectedContact.id,
-        senderName: selectedContact.name,
-        text: 'Привет! Как дела? 😊',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, reply]);
-    }, 1500);
+
   };
 
   const startVideoCall = async () => {
@@ -191,11 +239,7 @@ export default function Index() {
         description: 'Вы подключились к видеозвонку',
       });
 
-      setTimeout(() => {
-        if (remoteVideoRef.current && localStreamRef.current) {
-          remoteVideoRef.current.srcObject = localStreamRef.current;
-        }
-      }, 2000);
+
       
     } catch (error) {
       toast({
@@ -248,7 +292,7 @@ export default function Index() {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: true,
-          audio: false,
+          audio: true,
         });
         
         screenStreamRef.current = screenStream;
@@ -261,7 +305,7 @@ export default function Index() {
         
         toast({
           title: 'Демонстрация экрана',
-          description: 'Вы начали показ экрана',
+          description: 'Вы начали показ экрана с аудио',
         });
 
         screenStream.getVideoTracks()[0].addEventListener('ended', () => {
@@ -273,6 +317,34 @@ export default function Index() {
           title: 'Ошибка',
           description: 'Не удалось получить доступ к экрану',
           variant: 'destructive',
+        });
+      }
+    }
+  };
+
+  const toggleCamera = () => {
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsCameraOn(videoTrack.enabled);
+        toast({
+          title: videoTrack.enabled ? 'Камера включена' : 'Камера выключена',
+          description: videoTrack.enabled ? 'Собеседник вас видит' : 'Собеседник вас не видит',
+        });
+      }
+    }
+  };
+
+  const toggleMic = () => {
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMicOn(audioTrack.enabled);
+        toast({
+          title: audioTrack.enabled ? 'Микрофон включён' : 'Микрофон выключен',
+          description: audioTrack.enabled ? 'Собеседник вас слышит' : 'Собеседник вас не слышит',
         });
       }
     }
@@ -389,11 +461,42 @@ export default function Index() {
                 <Icon name="Users" size={20} />
                 Контакты
               </CardTitle>
+              <div className="mt-4 space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Поиск по нику..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  />
+                  <Button onClick={handleSearch} size="sm">
+                    <Icon name="Search" size={18} />
+                  </Button>
+                </div>
+                {searchResults.length > 0 && (
+                  <div className="bg-blue-50 rounded-lg p-2 space-y-1">
+                    <div className="text-xs text-gray-500 px-2">Результаты поиска:</div>
+                    {searchResults.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center gap-2 p-2 bg-white rounded hover:bg-gray-50 cursor-pointer"
+                        onClick={() => addToContacts(user)}
+                      >
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="text-sm">{user.avatar}</AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{user.name}</span>
+                        <Icon name="Plus" size={16} className="ml-auto text-blue-600" />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[600px]">
+              <ScrollArea className="h-[480px]">
                 <div className="space-y-2">
-                  {DEMO_CONTACTS.map((contact) => (
+                  {contacts.map((contact) => (
                     <div
                       key={contact.id}
                       onClick={() => setSelectedContact(contact)}
@@ -413,6 +516,12 @@ export default function Index() {
                       </div>
                     </div>
                   ))}
+                  {contacts.length === 0 && (
+                    <div className="text-center text-gray-400 py-8">
+                      <Icon name="UserPlus" size={48} className="mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Используйте поиск, чтобы найти друзей</p>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -480,11 +589,27 @@ export default function Index() {
                     </div>
                   </div>
                   
-                  <div className="flex justify-center gap-4">
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button
+                      onClick={toggleCamera}
+                      variant={isCameraOn ? 'default' : 'secondary'}
+                      size="sm"
+                    >
+                      <Icon name={isCameraOn ? 'Video' : 'VideoOff'} size={18} className="mr-2" />
+                      {isCameraOn ? 'Камера' : 'Камера выкл'}
+                    </Button>
+                    <Button
+                      onClick={toggleMic}
+                      variant={isMicOn ? 'default' : 'secondary'}
+                      size="sm"
+                    >
+                      <Icon name={isMicOn ? 'Mic' : 'MicOff'} size={18} className="mr-2" />
+                      {isMicOn ? 'Микрофон' : 'Микрофон выкл'}
+                    </Button>
                     <Button
                       onClick={toggleScreenShare}
                       variant={isScreenSharing ? 'default' : 'outline'}
-                      className="flex-1 max-w-xs"
+                      size="sm"
                     >
                       <Icon name="Monitor" size={18} className="mr-2" />
                       {isScreenSharing ? 'Остановить показ' : 'Показать экран'}
@@ -492,10 +617,10 @@ export default function Index() {
                     <Button
                       onClick={stopVideoCall}
                       variant="destructive"
-                      className="flex-1 max-w-xs"
+                      size="sm"
                     >
                       <Icon name="PhoneOff" size={18} className="mr-2" />
-                      Завершить звонок
+                      Завершить
                     </Button>
                   </div>
                 </div>
